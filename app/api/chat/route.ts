@@ -69,23 +69,35 @@ export async function POST(req: Request) {
   // captured once at module load.
   const groq = createGroq({ apiKey: process.env.GROQ_API_KEY!.trim() })
 
-  try {
-    const result = streamText({
-      model: groq('llama-3.3-70b-versatile'),
-      system: SYSTEM_PROMPT,
-      messages: messages.slice(-MAX_MESSAGES),
-      temperature: 0.7,
-      maxTokens: 900,
-    })
+  const result = streamText({
+    model: groq('llama-3.3-70b-versatile'),
+    system: SYSTEM_PROMPT,
+    messages: messages.slice(-MAX_MESSAGES),
+    temperature: 0.7,
+    maxTokens: 900,
+  })
 
-    return result.toDataStreamResponse()
-  } catch (err) {
-    // A rejected key surfaces here, not in the check above — distinguish
-    // "no key configured" from "key configured but refused".
-    const detail = err instanceof Error ? err.message : 'unknown error'
-    return new Response(
-      JSON.stringify({ error: `Groq rejected the request: ${detail}. If the key was rotated, update it and redeploy.` }),
-      { status: 502, headers: { 'Content-Type': 'application/json' } },
-    )
-  }
+  /*
+   * streamText fails INSIDE the stream, not by throwing — a try/catch around
+   * it never fires. By default those failures reach the client as the opaque
+   * string "An error occurred.", which is undebuggable in production.
+   *
+   * Log the real reason server-side and pass a usable summary to the client.
+   */
+  return result.toDataStreamResponse({
+    getErrorMessage: (error) => {
+      const detail = error instanceof Error ? error.message : String(error)
+      console.error('[api/chat] stream failed:', detail)
+      if (/api key|unauthor|401|invalid_api_key/i.test(detail)) {
+        return 'Groq rejected the API key. If it was rotated, update GROQ_API_KEY and redeploy.'
+      }
+      if (/rate limit|429/i.test(detail)) {
+        return 'Groq is rate limiting right now. Give it a moment and try again.'
+      }
+      if (/model|decommission|not found|404/i.test(detail)) {
+        return 'The configured Groq model is unavailable. Check the model id in app/api/chat/route.ts.'
+      }
+      return `Something went wrong talking to Groq: ${detail}`
+    },
+  })
 }
