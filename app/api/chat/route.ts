@@ -13,10 +13,16 @@ const MAX_MESSAGES = 24
 
 export async function POST(req: Request) {
   if (!process.env.GROQ_API_KEY) {
-    return new Response(
-      JSON.stringify({ error: 'GROQ_API_KEY is not set. Add it to .env.local and restart the dev server.' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } },
-    )
+    // The fix differs by environment, and pointing at the wrong one sends people
+    // hunting through local files for a variable that has to be set on the host.
+    const hint =
+      process.env.NODE_ENV === 'production'
+        ? 'GROQ_API_KEY is not set on this deployment. Add it under Settings → Environment Variables, then redeploy — existing deployments do not pick up new variables on their own.'
+        : 'GROQ_API_KEY is not set. Add it to .env.local and restart the dev server.'
+    return new Response(JSON.stringify({ error: hint }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
   let messages: CoreMessage[]

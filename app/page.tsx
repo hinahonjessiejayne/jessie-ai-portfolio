@@ -18,6 +18,24 @@ import ThemeToggle from '@/components/ThemeToggle'
  */
 const TURN_FRAMES = Array.from({ length: 11 }, (_, i) => `/avatar/turn-${String(i).padStart(2, '0')}.png`)
 
+/**
+ * Pull the human-readable reason out of a failed request.
+ *
+ * The route replies with `{ error: "..." }`, but useChat surfaces that as a raw
+ * JSON string on `error.message`. Parsing it back keeps the server's
+ * environment-specific advice instead of flattening every failure into one
+ * generic line.
+ */
+function serverError(error: Error): string {
+  try {
+    const parsed = JSON.parse(error.message)
+    if (typeof parsed?.error === 'string') return parsed.error
+  } catch {
+    /* Not JSON — a network drop or an abort. Fall through to the raw message. */
+  }
+  return error.message || 'Something went wrong. Try again in a moment.'
+}
+
 export default function Page() {
   const avatarRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -130,9 +148,13 @@ export default function Page() {
                   </div>
                 )}
                 {error && (
-                  <p className="mt-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-                    That didn&apos;t go through. Check the dev server has a valid GROQ_API_KEY, then try again.
-                  </p>
+                  <div className="mt-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                    <p>That didn&apos;t go through.</p>
+                    {/* Surface what the server actually said. The route explains the
+                        fix per environment, and a hardcoded string here would
+                        override it with advice that may point at the wrong place. */}
+                    <p className="mt-1 text-red-300/80">{serverError(error)}</p>
+                  </div>
                 )}
               </div>
             </motion.section>
