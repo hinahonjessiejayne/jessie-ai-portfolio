@@ -2,24 +2,46 @@ import { createGroq } from '@ai-sdk/groq'
 import { streamText, type CoreMessage } from 'ai'
 import { SYSTEM_PROMPT } from '@/lib/prompt'
 
-// Edge runtime keeps time-to-first-token low, which is the whole point here.
-export const runtime = 'edge'
+/*
+ * Node runtime, deliberately — not edge.
+ *
+ * Next.js INLINES `process.env.*` at build time for the edge runtime. If the
+ * variable is missing when the bundle is compiled, or a redeploy reuses a
+ * cached build, the value is baked in as `undefined` and setting it in the
+ * dashboard afterwards changes nothing no matter how often you redeploy.
+ *
+ * The node runtime reads the environment per request, so adding the variable
+ * and redeploying always takes effect. Groq is fast enough that the extra cold
+ * start costs far less than an environment variable that silently never lands.
+ */
+export const runtime = 'nodejs'
 export const maxDuration = 30
-
-const groq = createGroq({ apiKey: process.env.GROQ_API_KEY })
+// The key must never be captured at build time or baked into a cached response.
+export const dynamic = 'force-dynamic'
 
 /** Cap history so a long session can't grow the request without bound. */
 const MAX_MESSAGES = 24
 
+/** Non-secret diagnostics: enough to tell the failure modes apart, no values. */
+function keyDiagnosis() {
+  const raw = process.env.GROQ_API_KEY
+  if (raw === undefined) return 'the variable is not defined at all'
+  if (raw.trim() === '') return 'the variable is defined but empty'
+  if (raw.trim() !== raw) return 'the value has leading or trailing whitespace — re-paste it'
+  if (!raw.startsWith('gsk_')) return `the value does not look like a Groq key (starts with "${raw.slice(0, 4)}")`
+  return null
+}
+
 export async function POST(req: Request) {
-  if (!process.env.GROQ_API_KEY) {
+  const problem = keyDiagnosis()
+  if (problem) {
     // The fix differs by environment, and pointing at the wrong one sends people
     // hunting through local files for a variable that has to be set on the host.
-    const hint =
+    const where =
       process.env.NODE_ENV === 'production'
-        ? 'GROQ_API_KEY is not set on this deployment. Add it under Settings → Environment Variables, then redeploy — existing deployments do not pick up new variables on their own.'
-        : 'GROQ_API_KEY is not set. Add it to .env.local and restart the dev server.'
-    return new Response(JSON.stringify({ error: hint }), {
+        ? 'Add GROQ_API_KEY under Settings → Environment Variables (tick Production), then redeploy with "Use existing build cache" turned OFF.'
+        : 'Add GROQ_API_KEY to .env.local and restart the dev server.'
+    return new Response(JSON.stringify({ error: `${where} Right now ${problem}.` }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     })
@@ -43,13 +65,27 @@ export async function POST(req: Request) {
     })
   }
 
-  const result = streamText({
-    model: groq('llama-3.3-70b-versatile'),
-    system: SYSTEM_PROMPT,
-    messages: messages.slice(-MAX_MESSAGES),
-    temperature: 0.7,
-    maxTokens: 900,
-  })
+  // Built per request so the key is read from the live environment, never
+  // captured once at module load.
+  const groq = createGroq({ apiKey: process.env.GROQ_API_KEY!.trim() })
 
-  return result.toDataStreamResponse()
+  try {
+    const result = streamText({
+      model: groq('llama-3.3-70b-versatile'),
+      system: SYSTEM_PROMPT,
+      messages: messages.slice(-MAX_MESSAGES),
+      temperature: 0.7,
+      maxTokens: 900,
+    })
+
+    return result.toDataStreamResponse()
+  } catch (err) {
+    // A rejected key surfaces here, not in the check above — distinguish
+    // "no key configured" from "key configured but refused".
+    const detail = err instanceof Error ? err.message : 'unknown error'
+    return new Response(
+      JSON.stringify({ error: `Groq rejected the request: ${detail}. If the key was rotated, update it and redeploy.` }),
+      { status: 502, headers: { 'Content-Type': 'application/json' } },
+    )
+  }
 }
