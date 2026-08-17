@@ -74,7 +74,7 @@ These were user decisions, not oversights. Do not "fix" them:
 
 ## Pinned dependencies
 
-`ai@^4` and `@ai-sdk/groq@^1` are pinned on purpose. AI SDK v5 moved `useChat` to `@ai-sdk/react` and changed the streaming response API — upgrading requires editing both `app/page.tsx` and `app/api/chat/route.ts` together. Model is `llama-3.3-70b-versatile` (Groq retired the `llama-3.1-70b` the brief originally named).
+`ai@^4` and `@ai-sdk/groq@^1` are pinned on purpose. AI SDK v5 moved `useChat` to `@ai-sdk/react` and changed the streaming response API — upgrading requires editing both `app/page.tsx` and `app/api/chat/route.ts` together. Model is `openai/gpt-oss-120b` with `reasoningFormat: 'hidden'`. Groq has now retired both models the project previously used (`llama-3.1-70b`, then `llama-3.3-70b-versatile`), so when replies start failing, first run `GET https://api.groq.com/openai/v1/models` with the key and pick from what is actually served. Two constraints on the replacement: its chain of thought must not land in `content` (`qwen3.6-27b` streams a raw `<think>` block, which renders verbatim and breaks marker parsing), and `maxTokens` must leave room for the reasoning tokens on top of the visible reply.
 
 ## Verify third-party APIs
 

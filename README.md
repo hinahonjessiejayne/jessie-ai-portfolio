@@ -171,5 +171,12 @@ to the cut-out Memoji; the photo fallback keeps the circular frame and status do
 - **Pinned versions.** `ai@4` and `@ai-sdk/groq@1` are pinned intentionally — AI SDK v5
   moved `useChat` to `@ai-sdk/react` and changed the streaming response API. Upgrading
   means editing both `app/page.tsx` and `app/api/chat/route.ts`.
-- **Model:** `llama-3.3-70b-versatile`. The brief asked for `llama-3.1-70b`, which Groq
-  has retired; 3.3-70b is its replacement.
+- **Model:** `openai/gpt-oss-120b`, with reasoning hidden. Groq has retired both Llama
+  models this project ran on before (`llama-3.1-70b`, then `llama-3.3-70b-versatile`).
+  If chat starts failing with "the configured Groq model is unavailable", list the
+  models the key can actually reach and swap the id in `app/api/chat/route.ts`:
+
+  ```bash
+  curl -s https://api.groq.com/openai/v1/models \
+    -H "Authorization: Bearer $GROQ_API_KEY" | grep -o '"id":"[^"]*"'
+  ```

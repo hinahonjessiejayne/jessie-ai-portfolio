@@ -69,12 +69,25 @@ export async function POST(req: Request) {
   // captured once at module load.
   const groq = createGroq({ apiKey: process.env.GROQ_API_KEY!.trim() })
 
+  /*
+   * Groq retired `llama-3.3-70b-versatile`; it no longer appears in
+   * GET /openai/v1/models, so every request 404'd. gpt-oss-120b is the
+   * strongest chat model still served, and the only one of the survivors that
+   * keeps its chain of thought out of `content` — qwen3.6-27b streams a raw
+   * `<think>` block into the message body, which would render verbatim in the
+   * chat and break marker parsing.
+   *
+   * `reasoningFormat: 'hidden'` drops the thinking from the response entirely.
+   * It is still *generated*, and those tokens count against maxTokens — hence
+   * the larger budget below for the same ~900-token visible reply.
+   */
   const result = streamText({
-    model: groq('llama-3.3-70b-versatile'),
+    model: groq('openai/gpt-oss-120b'),
+    providerOptions: { groq: { reasoningFormat: 'hidden' } },
     system: SYSTEM_PROMPT,
     messages: messages.slice(-MAX_MESSAGES),
     temperature: 0.7,
-    maxTokens: 900,
+    maxTokens: 1400,
   })
 
   /*
