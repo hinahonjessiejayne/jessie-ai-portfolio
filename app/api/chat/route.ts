@@ -1,6 +1,7 @@
 import { createGroq } from '@ai-sdk/groq'
 import { streamText, type CoreMessage } from 'ai'
-import { SYSTEM_PROMPT } from '@/lib/prompt'
+import { buildSystemPrompt } from '@/lib/prompt'
+import { getPortfolio } from '@/lib/portfolio'
 
 /*
  * Node runtime, deliberately — not edge.
@@ -81,10 +82,13 @@ export async function POST(req: Request) {
    * It is still *generated*, and those tokens count against maxTokens — hence
    * the larger budget below for the same ~900-token visible reply.
    */
+  // Live project list from www.jessiecalm.com, cached an hour by Next's data cache.
+  const portfolio = await getPortfolio()
+
   const result = streamText({
     model: groq('openai/gpt-oss-120b'),
     providerOptions: { groq: { reasoningFormat: 'hidden' } },
-    system: SYSTEM_PROMPT,
+    system: buildSystemPrompt(portfolio),
     messages: messages.slice(-MAX_MESSAGES),
     temperature: 0.7,
     maxTokens: 1400,

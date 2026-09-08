@@ -11,7 +11,8 @@ import BookingCard from './BookingCard'
 /**
  * Renders the conversation.
  *
- * Rich content is driven by markers the model emits ([[PROJECTS]], [[BOOKING]]).
+ * Rich content is driven by markers the model emits ([[PROJECTS]], [[N8N]],
+ * [[ZAPIER]], [[GHL]], [[APPS]], [[BOOKING]]).
  * Splitting on them lets a single streamed reply interleave prose and real
  * components, and a half-streamed marker simply renders as text for a frame or
  * two before resolving — no flicker, no parsing failure.
@@ -21,7 +22,7 @@ import BookingCard from './BookingCard'
  * classes below if you'd rather match that convention.)
  */
 
-const MARKER = /\[\[(PROJECTS|BOOKING|N8N|ZAPIER|GHL)\]\]/g
+const MARKER = /\[\[(PROJECTS|BOOKING|N8N|ZAPIER|GHL|APPS)\]\]/g
 
 function renderWithMarkers(content: string) {
   const parts = content.split(MARKER)
@@ -30,6 +31,7 @@ function renderWithMarkers(content: string) {
     if (part === 'N8N') return <ProjectCards key={`n-${i}`} platform="N8N" />
     if (part === 'ZAPIER') return <ProjectCards key={`z-${i}`} platform="Zapier" />
     if (part === 'GHL') return <ProjectCards key={`g-${i}`} platform="GHL" />
+    if (part === 'APPS') return <ProjectCards key={`a-${i}`} platform="Apps & AI" />
     if (part === 'BOOKING') return <BookingCard key={`b-${i}`} />
     if (!part.trim()) return null
     return (

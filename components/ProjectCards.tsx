@@ -3,19 +3,22 @@
 import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowUpRight } from 'lucide-react'
-import { FEATURED, workflowsFor, type Platform, type Project } from '@/lib/projects'
+import { byCategory, featuredOf, usePortfolio, type Platform, type Project } from '@/lib/projects'
 
 /**
- * Project cards rendered inline in the chat stream.
+ * Project cards rendered inline in the chat stream, from the live portfolio
+ * feed (www.jessiecalm.com/portfolio.json via /api/portfolio).
  *
  * Stacked vertically rather than as a three-across row: inside a chat column a
  * horizontal trio would crush each card to an unreadable width, and the equal
  * three-card feature row is exactly the templated pattern to avoid.
  *
  * Two densities. The featured view is media-left / content-right with full
- * blurbs. The platform view lists every workflow for one tool in a compact row,
- * because a dozen full-size cards would bury the conversation.
+ * blurbs. The platform view lists every piece of work for one tab in a compact
+ * row, because a dozen full-size cards would bury the conversation.
  */
+
+const SITE = 'https://www.jessiecalm.com/#work'
 
 function FeaturedCard({ p, i }: { p: Project; i: number }) {
   return (
@@ -28,7 +31,7 @@ function FeaturedCard({ p, i }: { p: Project; i: number }) {
       <div className="relative h-36 overflow-hidden bg-surface sm:h-full">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={p.image}
+          src={p.imageUrl}
           alt=""
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
@@ -40,24 +43,26 @@ function FeaturedCard({ p, i }: { p: Project; i: number }) {
       </div>
 
       <div className="p-4">
-        <p className="eyebrow">{p.platform}</p>
+        <p className="eyebrow">{p.category}</p>
         <h3 className="mt-1 font-display text-lg italic leading-tight text-heading">{p.title}</h3>
-        <p className="mt-2 text-[13.5px] leading-relaxed text-muted">{p.blurb}</p>
+        <p className="mt-2 text-[13.5px] leading-relaxed text-muted">{p.description}</p>
 
-        <ul className="mt-3 flex flex-wrap gap-1.5">
-          {p.metrics.map((m) => (
-            <li
-              key={m}
-              className="rounded-full border border-gold/25 bg-gold/10 px-2.5 py-1 font-mono text-[11px] text-gold"
-            >
-              {m}
-            </li>
-          ))}
-        </ul>
+        {p.metrics && p.metrics.length > 0 && (
+          <ul className="mt-3 flex flex-wrap gap-1.5">
+            {p.metrics.map((m) => (
+              <li
+                key={m}
+                className="rounded-full border border-gold/25 bg-gold/10 px-2.5 py-1 font-mono text-[11px] text-gold"
+              >
+                {m}
+              </li>
+            ))}
+          </ul>
+        )}
 
-        {p.href && (
+        {p.link && (
           <a
-            href={p.href}
+            href={p.link}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-3 inline-flex items-center gap-1 text-[13px] font-medium text-gold transition-transform active:translate-y-px"
@@ -82,7 +87,7 @@ function CompactRow({ p, i }: { p: Project; i: number }) {
       <div className="h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-surface">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={p.image}
+          src={p.imageUrl}
           alt=""
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
@@ -91,8 +96,8 @@ function CompactRow({ p, i }: { p: Project; i: number }) {
 
       <div className="min-w-0 flex-1">
         <h4 className="text-[14px] font-semibold leading-snug text-heading">
-          {p.href ? (
-            <a href={p.href} target="_blank" rel="noopener noreferrer" className="hover:text-gold">
+          {p.link ? (
+            <a href={p.link} target="_blank" rel="noopener noreferrer" className="hover:text-gold">
               {p.title}
               <ArrowUpRight className="ml-0.5 inline h-3 w-3" strokeWidth={2} />
             </a>
@@ -100,37 +105,70 @@ function CompactRow({ p, i }: { p: Project; i: number }) {
             p.title
           )}
         </h4>
-        <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-relaxed text-muted">{p.blurb}</p>
-        <ul className="mt-1.5 flex flex-wrap gap-1">
-          {p.metrics.map((m) => (
-            <li key={m} className="rounded-full bg-gold/10 px-2 py-0.5 font-mono text-[10.5px] text-gold">
-              {m}
-            </li>
-          ))}
-        </ul>
+        <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-relaxed text-muted">{p.description}</p>
+        {p.metrics && p.metrics.length > 0 && (
+          <ul className="mt-1.5 flex flex-wrap gap-1">
+            {p.metrics.map((m) => (
+              <li key={m} className="rounded-full bg-gold/10 px-2 py-0.5 font-mono text-[10.5px] text-gold">
+                {m}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </motion.li>
   )
 }
 
+/** Card-shaped placeholders so the reply keeps its height while the feed loads. */
+function Skeleton({ rows }: { rows: number }) {
+  return (
+    <ul className="mt-3 space-y-2" aria-busy="true" aria-label="Loading projects">
+      {Array.from({ length: rows }, (_, i) => (
+        <li key={i} className="h-16 animate-pulse rounded-xl border border-line bg-surface" />
+      ))}
+    </ul>
+  )
+}
+
+function Unavailable() {
+  return (
+    <p className="mt-3 text-[13px] text-muted">
+      The project list could not be loaded just now.{' '}
+      <a href={SITE} target="_blank" rel="noopener noreferrer" className="text-gold">
+        Browse it on the site
+      </a>
+      .
+    </p>
+  )
+}
+
 function ProjectCards({ platform }: { platform?: Platform }) {
+  const portfolio = usePortfolio()
+  if (portfolio.status === 'loading') return <Skeleton rows={3} />
+  if (portfolio.status === 'error') return <Unavailable />
+
   if (!platform) {
+    const featured = featuredOf(portfolio.data)
+    if (featured.length === 0) return <Unavailable />
     return (
       <div className="mt-3 space-y-3">
-        {FEATURED.map((p, i) => (
+        {featured.map((p, i) => (
           <FeaturedCard key={p.id} p={p} i={i} />
         ))}
       </div>
     )
   }
 
-  const list = workflowsFor(platform)
+  const list = byCategory(portfolio.data, platform)
   if (list.length === 0) return null
 
+  const noun = platform === 'Apps & AI' ? 'build' : 'workflow'
   return (
     <div className="mt-3">
       <p className="eyebrow mb-2">
-        {platform} — {list.length} workflow{list.length === 1 ? '' : 's'}
+        {platform} — {list.length} {noun}
+        {list.length === 1 ? '' : 's'}
       </p>
       <ul className="space-y-2">
         {list.map((p, i) => (

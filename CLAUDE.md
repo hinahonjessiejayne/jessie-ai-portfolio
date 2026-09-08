@@ -28,8 +28,11 @@ Next.js 14 App Router, TypeScript, Tailwind v3, Vercel AI SDK v4 streaming from 
 ```
 app/page.tsx            Landing → chat transition, composer, conversation state
 app/api/chat/route.ts   Groq streaming endpoint, edge runtime
-lib/prompt.ts           The avatar's entire knowledge base
-lib/projects.ts         The three inline project cards
+lib/prompt.ts           The avatar's knowledge base — bio, services, contact; projects are injected
+lib/portfolio.ts        Server: fetches www.jessiecalm.com/portfolio.json (cached 1h), builds the
+                        PROJECTS prose for the prompt
+lib/projects.ts         Client: usePortfolio() hook reading /api/portfolio for the cards
+app/api/portfolio/route.ts  Same-origin proxy of the live feed for the browser
 components/             Avatar, HoneycombField, MessageList, PointerFX, chips, toggle
 ```
 
@@ -39,15 +42,15 @@ Three things are worth knowing before editing:
 
 | Marker | Renders |
 | --- | --- |
-| `[[PROJECTS]]` | The three `FEATURED` builds as full cards |
-| `[[N8N]]` / `[[ZAPIER]]` / `[[GHL]]` | Every workflow for that platform, compact rows |
+| `[[PROJECTS]]` | Every project flagged `featured` in the feed, as full cards |
+| `[[N8N]]` / `[[ZAPIER]]` / `[[GHL]]` / `[[APPS]]` | Every project in that tab of the main site, compact rows |
 | `[[BOOKING]]` | The GHL calendar, loaded on click |
 
 Adding a marker means three coordinated edits: teach it in `lib/prompt.ts`, add the branch in `MessageList`, and extend the `MARKER` regex. The prompt carries a hard no-duplication rule — the model writes one framing sentence and emits the marker, never listing in text what the cards already show.
 
 There is deliberately **no Make.com marker**. Jessie works in Make.com but has no Make.com build in the portfolio, and the prompt instructs the model to say so rather than reassign a Zapier or N8N project to it. Do not add one until a real Make.com project exists.
 
-**2. All content lives in `lib/prompt.ts`.** Changing what the AI knows is a one-file edit. It carries `TODO(jessie)` slots (education, rates) and instructs the model to admit uncertainty rather than invent — preserve that instruction when editing.
+**2. Bio content lives in `lib/prompt.ts`; projects do not.** The project catalogue is read per request from `https://www.jessiecalm.com/portfolio.json`, which the main site (`jessie-portfolio` repo, `src/data/projects.json`) emits at build. To add, rename or feature a project, edit that JSON in the main site and push — nothing here changes. If the feed is unreachable the prompt tells the model to say so and link the site, never to guess. `lib/prompt.ts` still carries `TODO(jessie)` slots (education, rates) and instructs the model to admit uncertainty rather than invent — preserve that instruction when editing.
 
 **3. The honeycomb is the signature element.** `HoneycombField` ports the exact lattice from the existing `ghl-portfolio.html` (`R=25`, `MAXD=350`, squared falloff, offset odd rows) and extends it to react to chat state. It runs entirely on canvas and refs — **never** wire it to React state; the 60fps loop must not re-render the tree. Same rule for `PointerFX` and `Avatar`.
 
@@ -80,12 +83,7 @@ These were user decisions, not oversights. Do not "fix" them:
 
 ## Repository / git
 
-The git root is `/Users/jcalm` — the entire home directory, not this project folder. Consequences:
-
-- `git status` from here reports hundreds of unrelated home-directory files (`Library/`, `.zsh_history`, other projects).
-- The branch `main` has **no commits**.
-- Never run bare `git add -A` or `git commit -a` from this directory; it would stage the user's whole home directory. Always stage explicit paths under `interactive portfolio/`.
-- Initializing a dedicated repo here is likely the right fix, but it changes the user's setup — ask first.
+This folder is its own repo, remote `hinahonjessiejayne/jessie-ai-portfolio`, deployed by Vercel from `main` to ai.jessiecalm.com. Stage explicit paths anyway; `front-end-skill.md` and `taste-skill.md` are gitignored on purpose.
 
 ## The design contract
 
