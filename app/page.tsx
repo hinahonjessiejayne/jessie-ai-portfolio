@@ -12,11 +12,10 @@ import SuggestionChips from '@/components/SuggestionChips'
 import ThemeToggle from '@/components/ThemeToggle'
 
 /**
- * Head-turn frames, ordered left-profile → front → right-profile. The Avatar
- * maps cursor position across this strip, so order matters.
- * Regenerate with scripts/make-turn-frames.py.
+ * Anime Jess, the explainer mascot. A single front-facing drawing, so the Avatar runs in tilt
+ * mode: it leans toward the cursor in 3D and the lighting layers follow its outline.
  */
-const TURN_FRAMES = Array.from({ length: 11 }, (_, i) => `/avatar/turn-${String(i).padStart(2, '0')}.png`)
+const AVATAR_IMAGE = '/avatar/anime-jess.webp'
 
 /**
  * Pull the human-readable reason out of a failed request.
@@ -103,7 +102,7 @@ export default function Page() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ type: 'spring', stiffness: 100, damping: 20 }}
               >
-                <Avatar ref={avatarRef} state={state} frames={TURN_FRAMES} />
+                <Avatar ref={avatarRef} state={state} src={AVATAR_IMAGE} />
               </motion.div>
 
               <motion.div
@@ -131,7 +130,7 @@ export default function Page() {
               className="flex flex-1 flex-col"
             >
               <div className="mb-4 flex items-center gap-3 pt-1">
-                <Avatar ref={avatarRef} state={state} frames={TURN_FRAMES} size={48} />
+                <Avatar ref={avatarRef} state={state} src={AVATAR_IMAGE} size={48} />
                 <div className="text-left">
                   <p className="font-display text-base italic text-heading">Jessie&apos;s avatar</p>
                   <p className="font-mono text-[11px] text-muted">
