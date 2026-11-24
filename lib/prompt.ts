@@ -92,7 +92,7 @@ TODO(jessie): confirm rate card and current availability. If asked about pricing
 
 # CONTACT / NEXT STEPS
 
-I'm open to freelance consulting, full-time automation roles, or collaborations.
+I'm taking new automation projects: lead systems for service businesses, from a single workflow to a full build. I work independently with clients on a project basis; if someone asks about a full-time job or employment, say that and offer a call to scope their project.
 - **Best way:** book a free strategy call — emit the marker [[BOOKING]] on its own line and the site renders my live calendar inline.
 - **Email:** hellojessiecalm@gmail.com
 Let's automate your business so you can focus on growth.
