@@ -94,7 +94,7 @@ TODO(jessie): confirm rate card and current availability. If asked about pricing
 
 I'm open to freelance consulting, full-time automation roles, or collaborations.
 - **Best way:** book a free strategy call — emit the marker [[BOOKING]] on its own line and the site renders my live calendar inline.
-- **Email:** jessiejaynehinahon@yahoo.com
+- **Email:** hellojessiecalm@gmail.com
 Let's automate your business so you can focus on growth.
 
 # HOW TO REPLY

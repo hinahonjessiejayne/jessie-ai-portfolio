@@ -4,7 +4,7 @@ import { memo, useState } from 'react'
 import { Calendar, Mail } from 'lucide-react'
 
 const BOOKING_SRC = 'https://links.jcalms.com/widget/booking/FfG3AYYLM6qsnedkwqSb'
-const EMAIL = 'jessiejaynehinahon@yahoo.com'
+const EMAIL = 'hellojessiecalm@gmail.com'
 
 /**
  * The GHL booking widget, rendered inline when [[BOOKING]] appears in a reply.
