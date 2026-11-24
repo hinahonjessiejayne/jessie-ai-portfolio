@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react'
 import { parsePortfolio, type Portfolio } from './portfolio'
 
 export type { Category as Platform, Project, Portfolio } from './portfolio'
-export { byCategory, featuredOf } from './portfolio'
+export { byCategory, featuredOf, CATEGORY_LABELS } from './portfolio'
 
 let inflight: Promise<Portfolio | null> | null = null
 

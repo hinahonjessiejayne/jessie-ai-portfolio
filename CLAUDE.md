@@ -48,7 +48,7 @@ Three things are worth knowing before editing:
 
 Adding a marker means three coordinated edits: teach it in `lib/prompt.ts`, add the branch in `MessageList`, and extend the `MARKER` regex. The prompt carries a hard no-duplication rule — the model writes one framing sentence and emits the marker, never listing in text what the cards already show.
 
-There is deliberately **no Make.com marker**. Jessie works in Make.com but has no Make.com build in the portfolio, and the prompt instructs the model to say so rather than reassign a Zapier or N8N project to it. Do not add one until a real Make.com project exists.
+**Build tools are never named on screen** (Jessie, 2026-11-25). The prompt tells the model never to say N8N, Zapier, Make or Make.com and to call those builds "automation"; `CATEGORY_LABELS` shows both categories as "Automation". The category values and the `[[N8N]]`/`[[ZAPIER]]` markers stay as they are because www.jessiecalm.com's feed and chat depend on them. There is no Make.com marker.
 
 **2. Bio content lives in `lib/prompt.ts`; projects do not.** The project catalogue is read per request from `https://www.jessiecalm.com/portfolio.json`, which the main site (`jessie-portfolio` repo, `src/data/projects.json`) emits at build. To add, rename or feature a project, edit that JSON in the main site and push — nothing here changes. If the feed is unreachable the prompt tells the model to say so and link the site, never to guess. `lib/prompt.ts` still carries `TODO(jessie)` slots (education, rates) and instructs the model to admit uncertainty rather than invent — preserve that instruction when editing.
 

@@ -17,6 +17,26 @@ export const REVALIDATE_SECONDS = 3600
 export const CATEGORIES = ['N8N', 'Zapier', 'GHL', 'Apps & AI'] as const
 export type Category = (typeof CATEGORIES)[number]
 
+/**
+ * What visitors see for each category, here and on www.jessiecalm.com. The values stay
+ * N8N/Zapier (the feed and the [[N8N]]/[[ZAPIER]] markers depend on them); the build
+ * tools are never named on screen.
+ */
+export const CATEGORY_LABELS: Record<Category, string> = {
+  N8N: 'Automation',
+  Zapier: 'Automation',
+  GHL: 'GHL',
+  'Apps & AI': 'Apps & AI',
+}
+
+/** The chat marker that renders each category's cards. */
+export const CATEGORY_MARKERS: Record<Category, string> = {
+  N8N: '[[N8N]]',
+  Zapier: '[[ZAPIER]]',
+  GHL: '[[GHL]]',
+  'Apps & AI': '[[APPS]]',
+}
+
 export type Project = {
   id: string
   title: string
@@ -127,7 +147,7 @@ export function catalogueForPrompt(p: Portfolio): string {
   for (const category of p.categories) {
     const items = byCategory(p, category)
     if (!items.length) continue
-    lines.push('', `**${category} (${items.length})**`)
+    lines.push('', `**${CATEGORY_LABELS[category]} (${items.length}), shown with ${CATEGORY_MARKERS[category]}**`)
     for (const x of items) lines.push(`- ${x.title} — ${gist(x.description)}${x.link ? ` (${x.link})` : ''}`)
   }
   return lines.join('\n')

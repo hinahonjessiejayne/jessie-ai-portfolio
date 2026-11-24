@@ -3,7 +3,7 @@
 import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowUpRight } from 'lucide-react'
-import { byCategory, featuredOf, usePortfolio, type Platform, type Project } from '@/lib/projects'
+import { byCategory, CATEGORY_LABELS, featuredOf, usePortfolio, type Platform, type Project } from '@/lib/projects'
 
 /**
  * Project cards rendered inline in the chat stream, from the live portfolio
@@ -43,7 +43,7 @@ function FeaturedCard({ p, i }: { p: Project; i: number }) {
       </div>
 
       <div className="p-4">
-        <p className="eyebrow">{p.category}</p>
+        <p className="eyebrow">{CATEGORY_LABELS[p.category]}</p>
         <h3 className="mt-1 font-display text-lg italic leading-tight text-heading">{p.title}</h3>
         <p className="mt-2 text-[13.5px] leading-relaxed text-muted">{p.description}</p>
 
