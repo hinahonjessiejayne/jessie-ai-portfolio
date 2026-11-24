@@ -38,17 +38,20 @@ const firaCode = Fira_Code({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://ai.jessiecalm.com'),
-  title: "Jessie Hinahon — Ask my AI",
+  title: 'Jessie Calm — Ask my AI',
   description:
-    'An AI avatar that answers anything about Jessie Hinahon: AI Automation Specialist and Technical VA in Tagaytay, Cavite. Ask about projects, tools, experience, or how to automate your business.',
+    "Ask Jessie Calm's AI avatar about lead systems for service businesses: funnels, CRM workflows and AI assistants that answer, book and follow up every enquiry. AI Automation Specialist in the Philippines.",
+  alternates: { canonical: '/' },
   openGraph: {
-    title: "Jessie Hinahon — Ask my AI",
-    description: 'Ask my AI avatar anything about my automation work.',
+    title: 'Jessie Calm — Ask my AI',
+    description: 'Ask my AI avatar about my work, the builds and how to book a call.',
     type: 'website',
     images: [{ url: '/og-ai.png', width: 1200, height: 630, alt: 'Ask my AI: Jessie Calm, AI Automation Specialist' }],
   },
   twitter: {
     card: 'summary_large_image',
+    title: 'Jessie Calm — Ask my AI',
+    description: 'Ask my AI avatar about my work, the builds and how to book a call.',
     images: ['/og-ai.png'],
   },
 }
