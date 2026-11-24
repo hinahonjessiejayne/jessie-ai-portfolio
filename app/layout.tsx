@@ -37,6 +37,7 @@ const firaCode = Fira_Code({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://ai.jessiecalm.com'),
   title: "Jessie Hinahon — Ask my AI",
   description:
     'An AI avatar that answers anything about Jessie Hinahon: AI Automation Specialist and Technical VA in Tagaytay, Cavite. Ask about projects, tools, experience, or how to automate your business.',
@@ -44,6 +45,11 @@ export const metadata: Metadata = {
     title: "Jessie Hinahon — Ask my AI",
     description: 'Ask my AI avatar anything about my automation work.',
     type: 'website',
+    images: [{ url: '/og-ai.png', width: 1200, height: 630, alt: 'Ask my AI: Jessie Calm, AI Automation Specialist' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/og-ai.png'],
   },
 }
 
