@@ -143,12 +143,16 @@ function Unavailable() {
   )
 }
 
-function ProjectCards({ platform }: { platform?: Platform }) {
+/**
+ * No `platforms`: the featured cards. Otherwise every project in those tabs, as one
+ * compact list under one heading (the two automation tabs share the label "Automation").
+ */
+function ProjectCards({ platforms }: { platforms?: readonly Platform[] }) {
   const portfolio = usePortfolio()
   if (portfolio.status === 'loading') return <Skeleton rows={3} />
   if (portfolio.status === 'error') return <Unavailable />
 
-  if (!platform) {
+  if (!platforms || platforms.length === 0) {
     const featured = featuredOf(portfolio.data)
     if (featured.length === 0) return <Unavailable />
     return (
@@ -160,14 +164,14 @@ function ProjectCards({ platform }: { platform?: Platform }) {
     )
   }
 
-  const list = byCategory(portfolio.data, platform)
+  const list = platforms.flatMap((platform) => byCategory(portfolio.data, platform))
   if (list.length === 0) return null
 
-  const noun = platform === 'Apps & AI' ? 'build' : 'workflow'
+  const noun = platforms.includes('Apps & AI') ? 'build' : 'workflow'
   return (
     <div className="mt-3">
       <p className="eyebrow mb-2">
-        {platform} — {list.length} {noun}
+        {CATEGORY_LABELS[platforms[0]]} — {list.length} {noun}
         {list.length === 1 ? '' : 's'}
       </p>
       <ul className="space-y-2">

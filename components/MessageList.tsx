@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Message } from 'ai'
 import ProjectCards from './ProjectCards'
+import type { Platform } from '@/lib/projects'
 import BookingCard from './BookingCard'
 
 /**
@@ -24,14 +25,21 @@ import BookingCard from './BookingCard'
 
 const MARKER = /\[\[(PROJECTS|BOOKING|N8N|ZAPIER|GHL|APPS)\]\]/g
 
+/** [[N8N]] and [[ZAPIER]] both mean "automation": the first one renders both tabs as one list. */
+const AUTOMATION: readonly Platform[] = ['N8N', 'Zapier']
+
 function renderWithMarkers(content: string) {
   const parts = content.split(MARKER)
+  let automationShown = false
   return parts.map((part, i) => {
     if (part === 'PROJECTS') return <ProjectCards key={`p-${i}`} />
-    if (part === 'N8N') return <ProjectCards key={`n-${i}`} platform="N8N" />
-    if (part === 'ZAPIER') return <ProjectCards key={`z-${i}`} platform="Zapier" />
-    if (part === 'GHL') return <ProjectCards key={`g-${i}`} platform="GHL" />
-    if (part === 'APPS') return <ProjectCards key={`a-${i}`} platform="Apps & AI" />
+    if (part === 'N8N' || part === 'ZAPIER') {
+      if (automationShown) return null
+      automationShown = true
+      return <ProjectCards key={`n-${i}`} platforms={AUTOMATION} />
+    }
+    if (part === 'GHL') return <ProjectCards key={`g-${i}`} platforms={['GHL']} />
+    if (part === 'APPS') return <ProjectCards key={`a-${i}`} platforms={['Apps & AI']} />
     if (part === 'BOOKING') return <BookingCard key={`b-${i}`} />
     if (!part.trim()) return null
     return (

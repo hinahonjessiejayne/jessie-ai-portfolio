@@ -18,7 +18,7 @@ export const CATEGORIES = ['N8N', 'Zapier', 'GHL', 'Apps & AI'] as const
 export type Category = (typeof CATEGORIES)[number]
 
 /**
- * What visitors see for each category, here and on www.jessiecalm.com. The values stay
+ * What visitors see for each category on this site (www.jessiecalm.com uses the same labels). The values stay
  * N8N/Zapier (the feed and the [[N8N]]/[[ZAPIER]] markers depend on them); the build
  * tools are never named on screen.
  */
