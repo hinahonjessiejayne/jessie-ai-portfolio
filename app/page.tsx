@@ -165,6 +165,7 @@ export default function Page() {
         <form onSubmit={handleSubmit} className="relative z-20 pt-2">
           <div className="glass-panel flex items-end gap-2 rounded-2xl p-2 transition-colors focus-within:border-gold/40">
             <textarea
+              maxLength={2000}
               value={input}
               onChange={handleInputChange}
               onKeyDown={(e) => {

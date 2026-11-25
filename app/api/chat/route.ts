@@ -22,6 +22,58 @@ export const dynamic = 'force-dynamic'
 
 /** Cap history so a long session can't grow the request without bound. */
 const MAX_MESSAGES = 24
+/** Longest visitor message, longest earlier AI reply, and the most text one request may carry. */
+const MAX_MESSAGE_CHARS = 2000
+const MAX_REPLY_CHARS = 8000
+const MAX_TOTAL_CHARS = 48000
+/** Raw body cap, checked before parsing. */
+const MAX_BODY_BYTES = 64 * 1024
+
+/*
+ * Per-visitor rate limit: 20 requests in 10 minutes per IP. It lives in this
+ * instance's memory, so it slows a script hitting one warm instance but is not
+ * a hard global cap. A Vercel Firewall rate-limit rule on /api/chat is the
+ * stronger layer.
+ */
+const RATE_LIMIT = 20
+const RATE_WINDOW_MS = 10 * 60 * 1000
+const hits = new Map<string, number[]>()
+
+function rateLimited(ip: string) {
+  const now = Date.now()
+  const recent = (hits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS)
+  if (recent.length >= RATE_LIMIT) {
+    hits.set(ip, recent)
+    return true
+  }
+  recent.push(now)
+  hits.set(ip, recent)
+  if (hits.size > 5000) {
+    for (const [key, times] of hits) if (times.every((t) => now - t >= RATE_WINDOW_MS)) hits.delete(key)
+  }
+  return false
+}
+
+function json(body: unknown, status: number, extra: Record<string, string> = {}) {
+  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...extra } })
+}
+
+/** Keeps only user and assistant turns with plain text, so no system or tool messages get through. */
+function cleanMessages(input: unknown): CoreMessage[] | null {
+  if (!Array.isArray(input)) return null
+  const out: CoreMessage[] = []
+  let total = 0
+  for (const m of input.slice(-MAX_MESSAGES)) {
+    const role = m?.role
+    const content = m?.content
+    if ((role !== 'user' && role !== 'assistant') || typeof content !== 'string') return null
+    if (content.length > (role === 'user' ? MAX_MESSAGE_CHARS : MAX_REPLY_CHARS)) return null
+    total += content.length
+    out.push({ role, content })
+  }
+  if (total > MAX_TOTAL_CHARS) return null
+  return out
+}
 
 /** Non-secret diagnostics: enough to tell the failure modes apart, no values. */
 function keyDiagnosis() {
@@ -29,42 +81,39 @@ function keyDiagnosis() {
   if (raw === undefined) return 'the variable is not defined at all'
   if (raw.trim() === '') return 'the variable is defined but empty'
   if (raw.trim() !== raw) return 'the value has leading or trailing whitespace — re-paste it'
-  if (!raw.startsWith('gsk_')) return `the value does not look like a Groq key (starts with "${raw.slice(0, 4)}")`
+  if (!raw.startsWith('gsk_')) return 'the value does not look like a Groq key'
   return null
 }
 
 export async function POST(req: Request) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  if (rateLimited(ip)) {
+    return json({ error: 'Too many messages in a short time. Try again in a few minutes.' }, 429, { 'Retry-After': '600' })
+  }
+
   const problem = keyDiagnosis()
   if (problem) {
-    // The fix differs by environment, and pointing at the wrong one sends people
-    // hunting through local files for a variable that has to be set on the host.
+    // Details go to the server log only; visitors get a generic message.
+    console.error(`[api/chat] GROQ_API_KEY problem: ${problem}`)
     const where =
       process.env.NODE_ENV === 'production'
-        ? 'Add GROQ_API_KEY under Settings → Environment Variables (tick Production), then redeploy with "Use existing build cache" turned OFF.'
-        : 'Add GROQ_API_KEY to .env.local and restart the dev server.'
-    return new Response(JSON.stringify({ error: `${where} Right now ${problem}.` }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+        ? 'The chat is not available right now.'
+        : `Add GROQ_API_KEY to .env.local and restart the dev server. Right now ${problem}.`
+    return json({ error: where }, 500)
   }
 
-  let messages: CoreMessage[]
+  const raw = await req.text()
+  if (raw.length > MAX_BODY_BYTES) return json({ error: 'That message is too long.' }, 413)
+
+  let messages: CoreMessage[] | null
   try {
-    const body = await req.json()
-    messages = Array.isArray(body?.messages) ? body.messages : []
+    messages = cleanMessages(JSON.parse(raw)?.messages)
   } catch {
-    return new Response(JSON.stringify({ error: 'Malformed request body.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return json({ error: 'Malformed request body.' }, 400)
   }
 
-  if (messages.length === 0) {
-    return new Response(JSON.stringify({ error: 'No messages provided.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
+  if (messages === null) return json({ error: `Messages must be text of ${MAX_MESSAGE_CHARS} characters or less.` }, 400)
+  if (messages.length === 0) return json({ error: 'No messages provided.' }, 400)
 
   // Built per request so the key is read from the live environment, never
   // captured once at module load.
@@ -89,7 +138,7 @@ export async function POST(req: Request) {
     model: groq('openai/gpt-oss-120b'),
     providerOptions: { groq: { reasoningFormat: 'hidden' } },
     system: buildSystemPrompt(portfolio),
-    messages: messages.slice(-MAX_MESSAGES),
+    messages,
     temperature: 0.7,
     maxTokens: 1400,
   })
@@ -105,16 +154,10 @@ export async function POST(req: Request) {
     getErrorMessage: (error) => {
       const detail = error instanceof Error ? error.message : String(error)
       console.error('[api/chat] stream failed:', detail)
-      if (/api key|unauthor|401|invalid_api_key/i.test(detail)) {
-        return 'Groq rejected the API key. If it was rotated, update GROQ_API_KEY and redeploy.'
-      }
       if (/rate limit|429/i.test(detail)) {
-        return 'Groq is rate limiting right now. Give it a moment and try again.'
+        return 'The chat is busy right now. Give it a moment and try again.'
       }
-      if (/model|decommission|not found|404/i.test(detail)) {
-        return 'The configured Groq model is unavailable. Check the model id in app/api/chat/route.ts.'
-      }
-      return `Something went wrong talking to Groq: ${detail}`
+      return 'Something went wrong. Please try again in a moment.'
     },
   })
 }
